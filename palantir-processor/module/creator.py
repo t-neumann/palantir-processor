@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import os, urllib3, re
 
 from util import misc
 
-def linkBamFile(source, destination):
+def linkBamFile(source, destination, verbose, log):
     contents = os.listdir(os.path.split(source)[0])
     
     toLink = source
@@ -15,17 +17,30 @@ def linkBamFile(source, destination):
             toLink = os.path.join(os.path.split(source)[0],file)
         
     if (not os.path.exists(os.path.join(destination,os.path.split(toLink)[1]))) :
+        if (verbose) :
+            print("Source link\t" + toLink, file=log)
+            print("Dest link\t" + os.path.join(destination,os.path.split(toLink)[1]), file=log)
         os.symlink(toLink, os.path.join(destination,os.path.split(toLink)[1]))
     if (not os.path.exists(os.path.join(destination,os.path.split(toLink)[1]) + ".bai")) :
+        if (verbose) :
+            print("Source link\t" + toLink + ".bai", file=log)
+            print("Dest link\t" + os.path.join(destination,os.path.split(toLink)[1]) + ".bai", file=log)
         # TODO: Check if bai is even available
+        if (not os.path.exists(toLink + ".bai")) :
+                raise Exception("Index " + os.path.exists(toLink + ".bai") + " does not exist!"
+                                )
         os.symlink(toLink + ".bai", os.path.join(destination,os.path.split(toLink)[1]) + ".bai")
 
-def setupFolders(rootDir, samples, experiment):
+def setupFolders(rootDir, samples, experiment, verbose, log):
+    
+    if (verbose) :
+        print("Creating folder structure:", file=log)
+        
     misc.safeCreateDir(os.path.join(rootDir,experiment))
     #for experiment in samples.keys():
     #    safeCreateDir(os.path.join(rootDir,experiment))
     for build in samples[experiment].keys():
-        misc.safeCreateDir(os.path.join(rootDir,experiment, build))
+        misc.safeCreateDir(os.path.join(rootDir,experiment, build), verbose, log)
         for sample in samples[experiment][build].keys():
             misc.safeCreateDir(os.path.join(rootDir,experiment, build, sample))
             for alignment in samples[experiment][build][sample].keys():
@@ -33,20 +48,26 @@ def setupFolders(rootDir, samples, experiment):
                 if (os.path.exists(samples[experiment][build][sample][alignment]['bam'])):
                     src = samples[experiment][build][sample][alignment]['bam']
                     dst = os.path.join(rootDir,experiment, build, sample,alignment)
-                    linkBamFile(src, dst)
+                    linkBamFile(src, dst, verbose, log)
 
-def wgetDataFromUrl(url, user, password):
+def wgetDataFromUrl(url, user, password, verbose, log):
+    
+    if (verbose) :
+        print("Retreiving data as " + user + " from " + url,file=log)
+        
     http = urllib3.PoolManager()
     headers = urllib3.util.make_headers(basic_auth=user + ":" + password)
     r = http.request('GET',url,headers=headers)
 
     return r.data.split("\n")
 
-def parseAlignmentData(data):
+def parseAlignmentData(data, verbose, log):
     
     dict = {}
     
     columns = extractColumns(data[0])
+    
+    sampleCount = 0
 
     for i in range(1,len(data)):
         fields = data[i].split("\t")
@@ -61,6 +82,10 @@ def parseAlignmentData(data):
             dict[fields[columns["experimentType"]]][fields[columns["build"]]][fields[columns["sampleId"]]][fields[columns["analysisDate"]]] = {}
         dict[fields[columns["experimentType"]]][fields[columns["build"]]][fields[columns["sampleId"]]][fields[columns["analysisDate"]]]['folder'] = fields[columns["folder"]]
         dict[fields[columns["experimentType"]]][fields[columns["build"]]][fields[columns["sampleId"]]][fields[columns["analysisDate"]]]['bam'] = fields[columns["bam"]]
+        sampleCount += 1
+    
+    if (verbose) :
+        print("Detected " + str(sampleCount) + " samples.",file=log)
     
     return(dict)
         

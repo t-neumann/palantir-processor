@@ -32,7 +32,11 @@ def removeExtension(inFile):
         name = os.path.splitext(name)[0]
     return name
             
-def safeCreateDir(path):
+def safeCreateDir(path, verbose = False, log = sys.stdout):
+    
+    if (verbose) :
+        print("Spawning:\t" + path, file=log)
+        
     if (not os.path.exists(path)):
          os.makedirs(path)
     if (not os.path.isdir(path)):
