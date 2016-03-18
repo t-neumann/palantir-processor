@@ -23,15 +23,10 @@ from os.path import basename
 # Global variables
 ########################################################################
 
-group = "zuber"
-
 # Sampleurl = http://gecko:9100/sequencedSamples/group/ + group
 sampleUrl = "http://gecko:9100/sequencedSamples/group"
 # Alignmenturl = http://gecko:9100/alignments/group/ + group + /text
 alignmentUrl = "http://gecko:9100/alignments/group"
-
-user = 'Tobias.Neumann'
-password = 'Osal7Onu39'
 
 logToMainOutput = True
 
@@ -70,23 +65,30 @@ parser.add_argument("-b", "--verbose", action='store_true', dest="verbose", help
 
 subparsers = parser.add_subparsers(help="", dest="command")
 
+# query command
+
+queryparser = subparsers.add_parser('query', help='Query Queue API')
+queryparser.add_argument("-g", "--group", type=str, required=False, dest="group", help="Group to retrieve data from")
+queryparser.add_argument("-u", "--user", type=str, required=True, dest="user", help="Username")
+queryparser.add_argument("-p", "--password", type=str, required=True, dest="password", help="Password")
+
 # prepare command
 
 prepareparser = subparsers.add_parser('prepare', help='Retreive data and prepare folder structure')
+prepareparser.add_argument('experiments', action='store', help='Experiment(s)' , nargs="+")
 prepareparser.add_argument("-r", "--rootDirectory", type=str, required=True, dest="root", help="Root directory for data preparation prepare data to")
-prepareparser.add_argument("-g", "--group", type=str, required=False, dest="group", help="Group to retrieve data from")
-prepareparser.add_argument("-u", "--user", type=str, required=False, dest="user", help="Username")
-prepareparser.add_argument("-p", "--password", type=str, required=False, dest="password", help="Password")
-prepareparser.add_argument("-e", "--experiment", type=str, required=True, dest="experiment", help="Experiments to prepare")
+prepareparser.add_argument("-g", "--group", type=str, required=True, dest="group", help="Group to retrieve data from")
+prepareparser.add_argument("-u", "--user", type=str, required=True, dest="user", help="Username")
+prepareparser.add_argument("-p", "--password", type=str, required=True, dest="password", help="Password")
 prepareparser.add_argument("-f", "--force", action='store_true', dest="force", help="Force directory creation (updating current data otherwise)")
 
 # count command
 
 prepareparser = subparsers.add_parser('count', help='Count raw data')
+prepareparser.add_argument('experiments', action='store', help='Experiment(s)' , nargs="+")
 prepareparser.add_argument("-r", "--rootDirectory", type=str, required=True, dest="root", help="Root directory for data preparation prepare data to")
 prepareparser.add_argument("-a", "--reference", type=str, required=True, dest="reference", help="Reference to use for counting")
 prepareparser.add_argument("-t", "--threads", type=int, required=False, default=1, dest="threads", help="Threads to use")
-prepareparser.add_argument("-e", "--experiment", type=str, required=True, dest="experiment", help="Experiments to prepare")
 prepareparser.add_argument("-f", "--force", action='store_true', dest="force", help="Force counting (running on new samples only otherwise)")
 prepareparser.add_argument("-d", "--dryrun", action='store_true', dest="dry", help="Dry run")
 
@@ -97,9 +99,21 @@ command = args.command
 
 verbose = args.verbose
 
+if (command == "query") :
+
+    log = getLogFile("query.log")
+    
+    url = '/'.join([alignmentUrl,args.group,"text"])
+    
+    data = creator.wgetDataFromUrl(url, args.user, args.password, verbose, log)
+    samples = creator.parseAlignmentData(data, verbose, log)
+    
+    message("Available data for " + args.group + ":\n")
+    message("\n".join(samples.keys()))
+
 if (command == "prepare") :
     message("Running prepare") 
-
+    
     log = getLogFile("prepare.log")
     
     if (not os.path.exists(args.root) or not os.path.isdir(args.root)) :
@@ -108,17 +122,19 @@ if (command == "prepare") :
         
     # Really make sure you want to delete the directory!!
     
-    if (args.force) :
-        print("Continue deleting directory: " + os.path.join(args.root,args.experiment))
-        choice = raw_input('Y/N?').upper()
-        if (choice == "Y") :
-            shutil.rmtree(os.path.join(args.root,args.experiment))
+    for experiment in args.experiments :
     
-    url = '/'.join([alignmentUrl,group,"text"])
-    
-    data = creator.wgetDataFromUrl(url, user, password, verbose, log)
-    samples = creator.parseAlignmentData(data, verbose, log)
-    creator.setupFolders(args.root, samples, args.experiment,verbose, log)
+        if (args.force) :
+            print("Continue deleting directory: " + os.path.join(args.root,experiment))
+            choice = raw_input('Y/N?').upper()
+            if (choice == "Y") :
+                shutil.rmtree(os.path.join(args.root,experiment))
+        
+        url = '/'.join([alignmentUrl,args.group,"text"])
+        
+        data = creator.wgetDataFromUrl(url, args.user, args.password, verbose, log)
+        samples = creator.parseAlignmentData(data, verbose, log)
+        creator.setupFolders(args.root, samples, experiment,verbose, log)
     
 if (command == "count") :
     
@@ -126,7 +142,9 @@ if (command == "count") :
     
     log = getLogFile("count.log")
     
-    counter.count(args.root, args.experiment, args.reference, args.threads, verbose, log, args.force, args.dry)
+    for experiment in args.experiment :
+    
+        counter.count(args.root, experiment, args.reference, args.threads, verbose, log, args.force, args.dry)
 
 #########################################################################
 # Cleanup
