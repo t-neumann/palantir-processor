@@ -68,7 +68,7 @@ subparsers = parser.add_subparsers(help="", dest="command")
 # query command
 
 queryparser = subparsers.add_parser('query', help='Query Queue API')
-queryparser.add_argument("-g", "--group", type=str, required=False, dest="group", help="Group to retrieve data from")
+queryparser.add_argument("-g", "--group", type=str, required=True, dest="group", help="Group to retrieve data from")
 queryparser.add_argument("-u", "--user", type=str, required=True, dest="user", help="Username")
 queryparser.add_argument("-p", "--password", type=str, required=True, dest="password", help="Password")
 
@@ -142,8 +142,8 @@ if (command == "count") :
     
     log = getLogFile("count.log")
     
-    for experiment in args.experiment :
-    
+    for experiment in args.experiments :
+            
         counter.count(args.root, experiment, args.reference, args.threads, verbose, log, args.force, args.dry)
 
 #########################################################################

@@ -7,7 +7,7 @@ import os, sys, re, shutil
 from util import misc
 
 # Reference
-referenceLoc = "/groups/zuber/zubarchive/USERS/tobias/references/hg19"
+referenceLoc = "/groups/zuber/zubarchive/USERS/tobias/references/gtf/"
 
 def getAvailableAlignments(root, experiment, build, verbose, log):
     alignments = []
@@ -32,19 +32,20 @@ def count(root, experiment, reference, threads, verbose = False, log = sys.stdou
     # misc.run("module load subread", log=sys.stderr,verbose = False, dry = False)
     
     build = getReferenceBuild(reference)
-    
+            
     if (verbose) :
         print ("Genome build of reference detected is:\t" + build, file=log)
     alignments = getAvailableAlignments(root, experiment, build, verbose, log)
     
     for alignment in alignments:
         dir = os.path.split(alignment)[0]
+        ref = os.path.basename(reference)
         if (force) :
-            shutil.rmtree(os.path.join(dir, reference))
-        misc.safeCreateDir(os.path.join(dir, reference))
-        outFile = os.path.join(dir, reference, misc.removeExtension(os.path.split(alignment)[1]) + ".feature.count")
+            shutil.rmtree(os.path.join(dir, ref))
+        misc.safeCreateDir(os.path.join(dir, ref))
+        outFile = os.path.join(dir, ref, misc.removeExtension(os.path.split(alignment)[1]) + ".feature.count")
         
-        command = "featureCounts -b -a " + os.path.join(referenceLoc,reference) + " -i " + alignment + " -o " + outFile + " -T " + str(threads)
+        command = "~/bin/subread-1.5.0-p1-source/bin/featureCounts -a " + os.path.join(referenceLoc,reference)+ " -o " + outFile + " -T " + str(threads)  + " " + alignment 
         if (not os.path.exists(outFile)) : 
             misc.run(command, log, verbose, dry)
             
